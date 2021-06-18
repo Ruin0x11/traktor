@@ -3,7 +3,7 @@
 namespace Traktor;
 
 use GuzzleHttp\Client as GuzzleClient;
-use GuzzleHttp\Message\ResponseInterface as GuzzleResponse;
+use GuzzleHttp\Psr7\Response as GuzzleResponse;
 use Traktor\Exception\AuthorizationException;
 use Traktor\Exception\AvailabilityException;
 use Traktor\Exception\MissingApiKeyException;
@@ -90,7 +90,7 @@ class Client
             $params = [];
         }
 
-        $target = $this->assembleGetRequestTarget($method, $params);
+        $target = $this->assembleGetRequestTarget($method);
 
         $response = $this->performGetRequest($target);
 
@@ -102,18 +102,14 @@ class Client
      * any associated parameters.
      *
      * @param  string  $method
-     * @param  array   $params
      * @return string
      */
-    protected function assembleGetRequestTarget($method, $params)
+    protected function assembleGetRequestTarget($method)
     {
         $method = preg_replace('/\./', '/', $method);
-        $params = implode('/', $params);
 
         $target = self::TRAKT_API_ENDPOINT
-                    . '/' . $method . '.' . self::RETURN_FORMAT
-                    . '/' . $this->apiKey
-                    . '/' . $params;
+                    . '/' . $method . '.' . self::RETURN_FORMAT;
 
         return $target;
     }
@@ -122,18 +118,24 @@ class Client
      * Executes the GET request specified by `$target`.
      *
      * @param  string  $target
-     * @return GuzzleHttp\Message\ResponseInterface
+     * @return GuzzleHttp\Psr7\Response
      */
     protected function performGetRequest($target)
     {
-        return $this->client->get($target);
+        return $this->client->get($target, [
+            "headers" => [
+                "Content-Type" => "application/json",
+                "trakt-api-version" => "2",
+                "trakt-api-key" => $this->apiKey
+            ]
+        ]);
     }
 
     /**
      * Parse a response, appropriately converting from JSON to `stdClass` as
      * well as handling errors.
      *
-     * @param  GuzzleHttp\Message\ResponseInterface
+     * @param  GuzzleHttp\Psr7\Response
      * @return mixed
      */
     protected function parseResponse(GuzzleResponse $response)
@@ -141,7 +143,8 @@ class Client
         $this->checkResponseErrors($response);
 
         try {
-            $decodedBody = $response->json(['object' => true]);
+            $body = $response->getBody();
+            $decodedBody = json_decode($body, false);
         } catch (GuzzleHttp\Exception\ParseException $e) {
             throw new RequestException('Unable to parse response: '
                 . $response->getBody());
@@ -154,7 +157,7 @@ class Client
      * Checks a GuzzleHttp response for errors, throwing the appropriate
      * exception if necessary.
      *
-     * @param  GuzzleHttp\Message\ResponseInterface
+     * @param  GuzzleHttp\Psr7\Response
      * @return void
      */
     protected function checkResponseErrors($response)
@@ -164,7 +167,8 @@ class Client
         if ($responseStatusCode === 200) return;
 
         try {
-            $decodedBody = $response->json(['object' => true]);
+            $body = $response->getBody();
+            $decodedBody = json_decode($body, false);
         } catch (GuzzleHttp\Exception\ParseException $e) {
             throw new RequestException('Unable to parse response: '
                 . $response->getBody());
