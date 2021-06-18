@@ -1,25 +1,29 @@
 <?php
+use PHPUnit\Framework\TestCase;
 
 use Mockery as m;
-use Traktor\Client as Traktor;
 
-class ClientTest extends \PHPUnit_Framework_TestCase
+class ClientTest extends TestCase
 {
-
-    public function tearDown()
+    public function tearDown() : void
     {
         m::close();
     }
 
-    public function testSettingApiKey()
+
+    public function testSettingApiKey() : void
     {
-        $t = new Traktor;
+        $t = new Traktor\Client;
         $t->setApiKey('foobar');
 
         $this->assertSame('foobar', $t->getApiKey());
     }
 
-    public function testGetRequestForSingleObject()
+    /**
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    public function testGetRequestForSingleObject() : void
     {
         $response = new stdClass;
         $response->foo = 'bar';
@@ -27,7 +31,7 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         $r = $this->getResponseMock(200, $response);
         $c = $this->getGuzzleGetClientMock($r);
 
-        $t = new Traktor($c);
+        $t = new Traktor\Client($c);
         $t->setApiKey('foobar');
 
         $decoded = $t->get('foo.bar');
@@ -35,7 +39,11 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         $this->assertSame('bar', $decoded->foo);
     }
 
-    public function testGetRequestForArrayOfObjects()
+    /**
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    public function testGetRequestForArrayOfObjects() : void
     {
         $resp1 = new stdClass;
         $resp1->foo = 'bar';
@@ -48,7 +56,7 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         $r = $this->getResponseMock(200, $response);
         $c = $this->getGuzzleGetClientMock($r);
 
-        $t = new Traktor($c);
+        $t = new Traktor\Client($c);
         $t->setApiKey('foobar');
 
         $decoded = $t->get('foo.bar');
@@ -58,10 +66,13 @@ class ClientTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * @expectedException Traktor\Exception\AuthorizationException
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
      */
-    public function testExceptionOnAuthorizationError()
+    public function testExceptionOnAuthorizationError() : void
     {
+        $this->expectException(Traktor\Exception\AuthorizationException::class);
+
         $response = new stdClass;
         $response->status = 'failure';
         $response->error = 'authorization mock';
@@ -69,17 +80,20 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         $r = $this->getResponseMock(401, $response);
         $c = $this->getGuzzleGetClientMock($r);
 
-        $t = new Traktor($c);
+        $t = new Traktor\Client($c);
         $t->setApiKey('foobar');
 
         $result = $t->get('foo.bar');
     }
 
     /**
-     * @expectedException Traktor\Exception\AvailabilityException
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
      */
-    public function testExceptionOnAvailabilityError()
+    public function testExceptionOnAvailabilityError() : void
     {
+        $this->expectException(Traktor\Exception\AvailabilityException::class);
+
         $response = new stdClass;
         $response->status = 'failure';
         $response->error = 'downtime mock';
@@ -87,17 +101,20 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         $r = $this->getResponseMock(503, $response);
         $c = $this->getGuzzleGetClientMock($r);
 
-        $t = new Traktor($c);
+        $t = new Traktor\Client($c);
         $t->setApiKey('foobar');
 
         $result = $t->get('foo.bar');
     }
 
     /**
-     * @expectedException Traktor\Exception\UnknownMethodException
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
      */
-    public function testExceptionOnBadMethodCall()
+    public function testExceptionOnBadMethodCall() : void
     {
+        $this->expectException(Traktor\Exception\UnknownMethodException::class);
+
         $response = new stdClass;
         $response->error = 'bar';
 
@@ -106,17 +123,20 @@ class ClientTest extends \PHPUnit_Framework_TestCase
 
         $c = $this->getGuzzleGetClientMock($r);
 
-        $t = new Traktor($c);
+        $t = new Traktor\Client($c);
         $t->setApiKey('foobar');
 
         $result = $t->get('foo.bar');
     }
 
     /**
-     * @expectedException Traktor\Exception\RequestException
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
      */
-    public function testExceptionOnUnknownError()
+    public function testExceptionOnUnknownError() : void
     {
+        $this->expectException(Traktor\Exception\RequestException::class);
+
         $response = new stdClass;
         $response->foo = 'bar';
 
@@ -125,25 +145,27 @@ class ClientTest extends \PHPUnit_Framework_TestCase
 
         $c = $this->getGuzzleGetClientMock($r);
 
-        $t = new Traktor($c);
+        $t = new Traktor\Client($c);
         $t->setApiKey('foobar');
 
         $result = $t->get('foo.bar');
     }
 
     /**
-     * @expectedException Traktor\Exception\MissingApiKeyException
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
      */
-    public function testExceptionOnMissingApiKey()
+    public function testExceptionOnMissingApiKey() : void
     {
-        $t = new Traktor;
+        $this->expectException(Traktor\Exception\MissingApiKeyException::class);
+        $t = new Traktor\Client;
 
         $result = $t->get('foo.bar');
     }
 
     protected function getResponseMock($statusCode, $json)
     {
-        $r = m::mock('GuzzleHttp\Message\ResponseInterface');
+        $r = m::mock('alias:GuzzleHttp\Message\ResponseInterface');
         $r->shouldReceive('getStatusCode')->andReturn($statusCode);
         $r->shouldReceive('json')->andReturn($json);
 
@@ -152,7 +174,7 @@ class ClientTest extends \PHPUnit_Framework_TestCase
 
     protected function getGuzzleGetClientMock($response)
     {
-        $c = m::mock('GuzzleHttp\Client');
+        $c = m::mock('alias:GuzzleHttp\Client');
         $c->shouldReceive('get')->andReturn($response);
 
         return $c;
