@@ -1,5 +1,5 @@
 {
-    "name": "ruin0x11/traktor",
+    "name": "alanly/traktor",
     "description": "A Trakt.tv API client library in PHP, compatible with PSR-4 and Composer.",
     "type": "library",
     "homepage": "https://github.com/alanly/traktor",
